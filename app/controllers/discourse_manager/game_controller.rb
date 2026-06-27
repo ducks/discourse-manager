@@ -19,6 +19,14 @@ module DiscourseManager
       render json: { session_id: session.id, status: "generating" }
     end
 
+    def next_day
+      session = GameSession.find_by(user_id: current_user.id, status: "day_end")
+      return render json: { error: "No day_end session" }, status: 404 unless session
+
+      session.start_next_day!
+      render json: session.as_json_state
+    end
+
     def action
       session = current_game_session
       return render json: { error: "No active session" }, status: 404 unless session

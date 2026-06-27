@@ -9,7 +9,7 @@ module DiscourseManager
     has_many :fake_posts,  class_name: "DiscourseManager::FakePost",  foreign_key: :game_session_id, dependent: :destroy
     has_many :game_events, class_name: "DiscourseManager::GameEvent", foreign_key: :game_session_id, dependent: :destroy
 
-    scope :active, -> { where(status: "active") }
+    scope :active, -> { where(status: %w[active day_end]) }
 
     DAY_DURATION   = 3.minutes
     TICK_INTERVAL  = 15.seconds
@@ -80,12 +80,19 @@ module DiscourseManager
     end
 
     def end_day!
+      summary = build_day_summary
       if day >= MAX_DAYS
         update!(status: "won")
+        publish_state!
       else
-        update!(day: day + 1)
-        start_day!
+        update!(status: "day_end", day_summary: summary)
+        publish_state!
       end
+    end
+
+    def start_next_day!
+      update!(day: day + 1, status: "active", day_summary: nil)
+      start_day!
       publish_state!
     end
 
@@ -97,6 +104,7 @@ module DiscourseManager
         status: status,
         meters: { health:, response_time:, spam_rate:, retention: },
         day_ends_at: day_ends_at,
+        day_summary: day_summary,
         pending_flags: pending_flags.includes(:fake_user).map(&:as_flag_json),
         pending_events: pending_events.map(&:as_json),
       }
@@ -125,6 +133,19 @@ module DiscourseManager
           removed: false,
         )
       end
+    end
+
+    def build_day_summary
+      resolved_today = fake_posts.where(flag_resolved: true).count
+      banned_today   = fake_users.where(banned: true).count
+      events_today   = game_events.where(resolved: true).count
+      {
+        flags_resolved: resolved_today,
+        users_banned: banned_today,
+        events_handled: events_today,
+        score: score,
+        health: health,
+      }
     end
 
     def schedule_ticks(ends_at)

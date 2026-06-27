@@ -284,6 +284,69 @@
   margin-top: 0.75em;
 }
 
+// Day summary
+
+.dm-day-summary {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  padding: 2em;
+}
+
+.dm-day-summary__card {
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  border: 1px solid var(--primary-low);
+  border-radius: 8px;
+  padding: 2em;
+}
+
+.dm-day-summary__title {
+  font-size: 1.8em;
+  font-weight: bold;
+  margin-bottom: 1.5em;
+}
+
+.dm-day-summary__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5em;
+  margin-bottom: 1.5em;
+}
+
+.dm-day-summary__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25em;
+}
+
+.dm-day-summary__stat-value {
+  font-size: 2.5em;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.dm-day-summary__stat-label {
+  font-size: 0.8em;
+  color: var(--primary-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dm-day-summary__health {
+  margin-bottom: 1.5em;
+  color: var(--primary-medium);
+}
+
+.dm-day-summary__btn {
+  width: 100%;
+  padding: 0.75em;
+  font-size: 1.1em;
+}
+
 // Game over
 
 .dm-game-over {

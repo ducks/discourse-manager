@@ -18,6 +18,7 @@ export default class GameStateService extends Service {
   @tracked pendingFlags = [];
   @tracked pendingEvents = [];
   @tracked dayEndsAt = null;
+  @tracked daySummary = null;
   @tracked loading = true;
   @tracked hasSession = false;
 
@@ -80,6 +81,16 @@ export default class GameStateService extends Service {
     this.pendingFlags = data.pending_flags;
     this.pendingEvents = data.pending_events;
     this.dayEndsAt = data.day_ends_at ? new Date(data.day_ends_at) : null;
+    this.daySummary = data.day_summary ?? null;
+  }
+
+  async nextDay() {
+    try {
+      const data = await ajax("/discourse-manager/next-day", { type: "POST" });
+      this.onUpdate(data);
+    } catch (e) {
+      popupAjaxError(e);
+    }
   }
 
   async submitAction(actionType, params = {}) {
@@ -96,6 +107,10 @@ export default class GameStateService extends Service {
 
   get isOver() {
     return this.status === "won" || this.status === "lost";
+  }
+
+  get nextDayNumber() {
+    return (this.day ?? 1) + 1;
   }
 
   get healthColor() { return meterColor(this.meters.health); }

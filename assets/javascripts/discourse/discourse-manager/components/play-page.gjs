@@ -7,6 +7,7 @@ import GameHud from "./game-hud";
 import FlagQueue from "./flag-queue";
 import EventCard from "./event-card";
 import StartScreen from "./start-screen";
+import DaySummary from "./day-summary";
 
 export default class PlayPage extends Component {
   @service gameState;
@@ -37,6 +38,8 @@ export default class PlayPage extends Component {
           {{/if}}
           <button class="btn btn-primary" {{on "click" this.restart}}>Play Again</button>
         </div>
+      {{else if (eq this.gameState.status "day_end")}}
+        <DaySummary />
       {{else if this.gameState.hasSession}}
         <GameHud />
         <EventCard />
