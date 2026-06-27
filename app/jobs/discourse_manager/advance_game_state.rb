@@ -5,6 +5,7 @@ module Jobs
     def execute(args)
       session = DiscourseManager::GameSession.find_by(id: args[:game_session_id])
       return unless session&.status == "active"
+      return if session.day_ends_at && session.day_ends_at < Time.current
 
       session.advance_tick!
       session.publish_state!

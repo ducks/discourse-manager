@@ -25,6 +25,14 @@
   font-weight: bold;
 }
 
+.dm-hud__timer {
+  font-size: 1.1em;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+  margin-top: 2px;
+}
+
 .dm-hud__meters {
   display: flex;
   gap: 1.5em;

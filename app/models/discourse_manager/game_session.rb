@@ -11,8 +11,9 @@ module DiscourseManager
 
     scope :active, -> { where(status: "active") }
 
-    DAY_DURATION = 3.minutes
-    MAX_DAYS = 30
+    DAY_DURATION   = 3.minutes
+    TICK_INTERVAL  = 15.seconds
+    MAX_DAYS       = 30
 
     PROFILES = %w[lurker contributor troll spammer newbie].freeze
     CATEGORIES = %w[general meta support announcements].freeze
@@ -71,8 +72,10 @@ module DiscourseManager
     end
 
     def start_day!
-      update!(day_ends_at: DAY_DURATION.from_now)
-      Jobs.enqueue_at(day_ends_at, :advance_game_day, game_session_id: id)
+      ends_at = DAY_DURATION.from_now
+      update!(day_ends_at: ends_at)
+      schedule_ticks(ends_at)
+      Jobs.enqueue_at(ends_at, :advance_game_day, game_session_id: id)
     end
 
     def end_day!
@@ -103,6 +106,14 @@ module DiscourseManager
     end
 
     private
+
+    def schedule_ticks(ends_at)
+      tick_count = (DAY_DURATION / TICK_INTERVAL).to_i
+      tick_count.times do |i|
+        fire_at = (i + 1) * TICK_INTERVAL
+        Jobs.enqueue_at(fire_at.from_now, :advance_game_state, game_session_id: id)
+      end
+    end
 
     def apply_flag_decay
       unresolved_count = pending_flags.count

@@ -1,8 +1,32 @@
 import Component from "@glimmer/component";
 import { service } from "@ember/service";
+import { tracked } from "@glimmer/tracking";
+import { action } from "@ember/object";
+import { modifier } from "ember-modifier";
 
 export default class GameHud extends Component {
   @service gameState;
+  @tracked timeLeft = "--:--";
+
+  #timer = null;
+
+  startTimer = modifier(() => {
+    this.#tick();
+    this.#timer = setInterval(() => this.#tick(), 1000);
+    return () => clearInterval(this.#timer);
+  });
+
+  #tick() {
+    const { dayEndsAt } = this.gameState;
+    if (!dayEndsAt) {
+      this.timeLeft = "--:--";
+      return;
+    }
+    const diff = Math.max(0, Math.floor((dayEndsAt - Date.now()) / 1000));
+    const m = Math.floor(diff / 60).toString().padStart(2, "0");
+    const s = (diff % 60).toString().padStart(2, "0");
+    this.timeLeft = `${m}:${s}`;
+  }
 
   get meters() {
     const { meters } = this.gameState;
@@ -15,10 +39,11 @@ export default class GameHud extends Component {
   }
 
   <template>
-    <div class="dm-hud">
+    <div class="dm-hud" {{this.startTimer}}>
       <div class="dm-hud__meta">
         <span class="dm-hud__day">Day {{this.gameState.day}}</span>
         <span class="dm-hud__score">Score: {{this.gameState.score}}</span>
+        <span class="dm-hud__timer">{{this.timeLeft}}</span>
       </div>
       <div class="dm-hud__meters">
         {{#each this.meters as |meter|}}
