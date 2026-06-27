@@ -4,6 +4,76 @@
   padding: 1em;
 }
 
+// Start screen
+
+.dm-start {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  padding: 2em;
+}
+
+.dm-start__card {
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+}
+
+.dm-start__title {
+  font-size: 2em;
+  font-weight: bold;
+  margin-bottom: 0.25em;
+}
+
+.dm-start__subtitle {
+  font-size: 1.2em;
+  color: var(--primary-medium);
+  margin-bottom: 1.5em;
+}
+
+.dm-start__description {
+  text-align: left;
+  margin-bottom: 1.5em;
+  line-height: 1.6;
+
+  p + p { margin-top: 0.75em; }
+}
+
+.dm-start__meters-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  margin-bottom: 2em;
+  text-align: left;
+}
+
+.dm-start__meter {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  font-size: 0.85em;
+  color: var(--primary-medium);
+
+  span { width: 140px; flex-shrink: 0; }
+  .dm-meter__bar { flex: 1; }
+}
+
+.dm-meter__fill--green { background: var(--success); }
+
+.dm-start__btn {
+  width: 100%;
+  padding: 0.75em;
+  font-size: 1.1em;
+  margin-bottom: 1.5em;
+}
+
+.dm-start__hint {
+  font-size: 0.85em;
+  color: var(--primary-medium);
+  line-height: 1.5;
+}
+
 // HUD
 
 .dm-hud {

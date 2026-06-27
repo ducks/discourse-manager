@@ -6,6 +6,7 @@ import { eq } from "truth-helpers";
 import GameHud from "./game-hud";
 import FlagQueue from "./flag-queue";
 import EventCard from "./event-card";
+import StartScreen from "./start-screen";
 
 export default class PlayPage extends Component {
   @service gameState;
@@ -18,6 +19,10 @@ export default class PlayPage extends Component {
   <template>
     <div class="dm-play">
       {{#if this.gameState.loading}}
+        <div class="dm-loading">
+          <p>Loading...</p>
+        </div>
+      {{else if (eq this.gameState.status "generating")}}
         <div class="dm-loading">
           <p>Generating your community...</p>
         </div>
@@ -32,12 +37,14 @@ export default class PlayPage extends Component {
           {{/if}}
           <button class="btn btn-primary" {{on "click" this.restart}}>Play Again</button>
         </div>
-      {{else}}
+      {{else if this.gameState.hasSession}}
         <GameHud />
         <EventCard />
         <div class="dm-main">
           <FlagQueue />
         </div>
+      {{else}}
+        <StartScreen />
       {{/if}}
     </div>
   </template>

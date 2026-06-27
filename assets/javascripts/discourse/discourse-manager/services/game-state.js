@@ -19,16 +19,22 @@ export default class GameStateService extends Service {
   @tracked pendingEvents = [];
   @tracked dayEndsAt = null;
   @tracked loading = true;
+  @tracked hasSession = false;
 
-  async load() {
+  #messageBus = null;
+  #channel = null;
+
+  async load(messageBus) {
+    this.#messageBus = messageBus;
     this.loading = true;
     try {
       const data = await ajax("/discourse-manager/state");
-      this.sessionId = data.id;
+      this.hasSession = true;
       this.onUpdate(data);
+      this.#subscribe();
     } catch (e) {
       if (e.jqXHR?.status === 404) {
-        await this.start();
+        this.hasSession = false;
       } else {
         popupAjaxError(e);
       }
@@ -42,11 +48,26 @@ export default class GameStateService extends Service {
     try {
       const data = await ajax("/discourse-manager/start", { type: "POST" });
       this.sessionId = data.session_id;
+      this.hasSession = true;
+      this.#subscribe();
     } catch (e) {
       popupAjaxError(e);
     } finally {
       this.loading = false;
     }
+  }
+
+  unsubscribe(messageBus) {
+    if (this.#channel) {
+      messageBus.unsubscribe(this.#channel);
+      this.#channel = null;
+    }
+  }
+
+  #subscribe() {
+    if (!this.#messageBus || !this.sessionId) return;
+    this.#channel = `/discourse-manager/session/${this.sessionId}`;
+    this.#messageBus.subscribe(this.#channel, (data) => this.onUpdate(data));
   }
 
   onUpdate(data) {

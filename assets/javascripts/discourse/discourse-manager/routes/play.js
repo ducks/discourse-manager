@@ -6,21 +6,10 @@ export default class PlayRoute extends Route {
   @service messageBus;
 
   async model() {
-    await this.gameState.load();
-  }
-
-  activate() {
-    if (!this.gameState.sessionId) return;
-    this.messageBus.subscribe(
-      `/discourse-manager/session/${this.gameState.sessionId}`,
-      (data) => this.gameState.onUpdate(data)
-    );
+    await this.gameState.load(this.messageBus);
   }
 
   deactivate() {
-    if (!this.gameState.sessionId) return;
-    this.messageBus.unsubscribe(
-      `/discourse-manager/session/${this.gameState.sessionId}`
-    );
+    this.gameState.unsubscribe(this.messageBus);
   }
 }
