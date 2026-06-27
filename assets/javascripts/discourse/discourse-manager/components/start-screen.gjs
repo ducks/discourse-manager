@@ -2,6 +2,7 @@ import Component from "@glimmer/component";
 import { service } from "@ember/service";
 import { action } from "@ember/object";
 import { on } from "@ember/modifier";
+import { eq } from "truth-helpers";
 
 export default class StartScreen extends Component {
   @service gameState;
@@ -45,14 +46,21 @@ export default class StartScreen extends Component {
           </div>
         </div>
 
-        <button class="btn btn-primary dm-start__btn" {{on "click" this.start}}>
-          Start Day 1
-        </button>
+        {{#if (eq this.gameState.status "generating")}}
+          <div class="dm-start__generating">
+            <span class="dm-start__spinner"></span>
+            Generating your community...
+          </div>
+        {{else}}
+          <button class="btn btn-primary dm-start__btn" {{on "click" this.start}}>
+            Start Day 1
+          </button>
 
-        <p class="dm-start__hint">
-          Approve flags, warn users, suspend bad actors. Don't over-moderate
-          or you'll lose retention. Don't under-moderate or you'll lose everything else.
-        </p>
+          <p class="dm-start__hint">
+            Approve flags, warn users, suspend bad actors. Don't over-moderate
+            or you'll lose retention. Don't under-moderate or you'll lose everything else.
+          </p>
+        {{/if}}
       </div>
     </div>
   </template>

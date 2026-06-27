@@ -74,6 +74,30 @@
   line-height: 1.5;
 }
 
+.dm-start__generating {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75em;
+  padding: 1em;
+  color: var(--primary-medium);
+  font-size: 0.95em;
+}
+
+.dm-start__spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--primary-low);
+  border-top-color: var(--primary-medium);
+  border-radius: 50%;
+  animation: dm-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes dm-spin {
+  to { transform: rotate(360deg); }
+}
+
 // HUD
 
 .dm-hud {

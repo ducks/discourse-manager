@@ -48,6 +48,7 @@ export default class GameStateService extends Service {
     try {
       const data = await ajax("/discourse-manager/start", { type: "POST" });
       this.sessionId = data.session_id;
+      this.status = "generating";
       this.hasSession = true;
       this.#subscribe();
     } catch (e) {
