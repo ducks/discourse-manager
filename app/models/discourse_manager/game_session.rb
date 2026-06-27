@@ -43,6 +43,7 @@ module DiscourseManager
 
     def advance_tick!
       apply_flag_decay
+      spawn_new_flags(count: rand(1..2))
       maybe_fire_event
       check_lose_conditions
       save!
@@ -107,6 +108,25 @@ module DiscourseManager
 
     private
 
+    def spawn_new_flags(count:)
+      bad_actors = fake_users.where(profile: %w[spammer troll], banned: false, suspended: false).to_a
+      return if bad_actors.empty?
+
+      count.times do
+        user = bad_actors.sample
+        fake_posts.create!(
+          fake_user: user,
+          body: DiscourseManager::FakePost.post_body_for(user),
+          category: CATEGORIES.sample,
+          is_topic_op: false,
+          flagged: true,
+          flag_type: DiscourseManager::FakePost.flag_type_for(user),
+          flag_resolved: false,
+          removed: false,
+        )
+      end
+    end
+
     def schedule_ticks(ends_at)
       tick_count = (DAY_DURATION / TICK_INTERVAL).to_i
       tick_count.times do |i|
@@ -144,11 +164,15 @@ module DiscourseManager
       return unless rand < event_probability
 
       event_type = EVENT_TYPES.sample
+      payload = build_event_payload(event_type)
+
+      apply_event_on_fire(event_type, payload)
+
       game_events.create!(
         event_type: event_type,
         fired: true,
         fire_at: Time.current,
-        payload: build_event_payload(event_type),
+        payload: payload,
       )
       publish_state!
     end
@@ -200,6 +224,39 @@ module DiscourseManager
       return unless event
       event.update!(resolved: true, resolution: resolution, resolved_at: Time.current)
       apply_event_resolution(event, resolution)
+    end
+
+    def apply_event_on_fire(event_type, payload)
+      case event_type
+      when "spam_wave"
+        spawn_new_flags(count: payload[:count] || 10)
+      when "viral_topic"
+        spawn_new_flags(count: payload[:flag_count] || 15)
+      when "sockpuppet_wave"
+        # spawn new spammer users then immediately have them post
+        (payload[:count] || 5).times do
+          user = fake_users.create!(
+            username: DiscourseManager::FakeUser.generate_username,
+            display_name: DiscourseManager::FakeUser.generate_display_name,
+            avatar_color: DiscourseManager::FakeUser::AVATAR_COLORS.sample,
+            trust_level: 0,
+            profile: "spammer",
+            warnings: 0,
+            suspended: false,
+            banned: false,
+          )
+          fake_posts.create!(
+            fake_user: user,
+            body: DiscourseManager::FakePost.post_body_for(user),
+            category: CATEGORIES.sample,
+            is_topic_op: false,
+            flagged: true,
+            flag_type: "spam",
+            flag_resolved: false,
+            removed: false,
+          )
+        end
+      end
     end
 
     def apply_event_resolution(event, resolution)
