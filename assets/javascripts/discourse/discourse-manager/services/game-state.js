@@ -19,6 +19,8 @@ export default class GameStateService extends Service {
   @tracked pendingEvents = [];
   @tracked dayEndsAt = null;
   @tracked daySummary = null;
+  @tracked myStats = null;
+  @tracked leaderboard = [];
   @tracked loading = true;
   @tracked hasSession = false;
 
@@ -29,15 +31,23 @@ export default class GameStateService extends Service {
     this.#messageBus = messageBus;
     this.loading = true;
     try {
-      const data = await ajax("/discourse-manager/state");
-      this.hasSession = true;
-      this.onUpdate(data);
-      this.#subscribe();
-    } catch (e) {
-      if (e.jqXHR?.status === 404) {
+      const [stateResult, statsResult] = await Promise.allSettled([
+        ajax("/discourse-manager/state"),
+        ajax("/discourse-manager/my-stats"),
+      ]);
+
+      if (statsResult.status === "fulfilled") {
+        this.myStats = statsResult.value;
+      }
+
+      if (stateResult.status === "fulfilled") {
+        this.hasSession = true;
+        this.onUpdate(stateResult.value);
+        this.#subscribe();
+      } else if (stateResult.reason?.jqXHR?.status === 404) {
         this.hasSession = false;
       } else {
-        popupAjaxError(e);
+        popupAjaxError(stateResult.reason);
       }
     } finally {
       this.loading = false;
@@ -73,6 +83,7 @@ export default class GameStateService extends Service {
   }
 
   onUpdate(data) {
+    const wasOver = this.isOver;
     this.sessionId = data.id ?? this.sessionId;
     this.day = data.day;
     this.score = data.score;
@@ -82,6 +93,22 @@ export default class GameStateService extends Service {
     this.pendingEvents = data.pending_events;
     this.dayEndsAt = data.day_ends_at ? new Date(data.day_ends_at) : null;
     this.daySummary = data.day_summary ?? null;
+    if (!wasOver && this.isOver) {
+      this.#fetchLeaderboard();
+    }
+  }
+
+  async #fetchLeaderboard() {
+    try {
+      const [board, stats] = await Promise.all([
+        ajax("/discourse-manager/leaderboard"),
+        ajax("/discourse-manager/my-stats"),
+      ]);
+      this.leaderboard = board;
+      this.myStats = stats;
+    } catch {
+      // non-critical, ignore
+    }
   }
 
   async nextDay() {

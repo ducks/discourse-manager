@@ -24,16 +24,19 @@ after_initialize do
   require_relative "app/models/discourse_manager/fake_user"
   require_relative "app/models/discourse_manager/fake_post"
   require_relative "app/models/discourse_manager/game_event"
+  require_relative "app/models/discourse_manager/user_stat"
   require_relative "app/jobs/discourse_manager/advance_game_state"
   require_relative "app/jobs/discourse_manager/generate_fake_data"
 
   Discourse::Application.routes.append do
     get "/play" => "discourse_manager/game#show"
     scope "/discourse-manager" do
-      post "/start"    => "discourse_manager/game#start"
-      post "/next-day" => "discourse_manager/game#next_day"
-      post "/action"   => "discourse_manager/game#action"
-      get  "/state"    => "discourse_manager/game#state"
+      post "/start"       => "discourse_manager/game#start"
+      post "/next-day"    => "discourse_manager/game#next_day"
+      post "/action"      => "discourse_manager/game#action"
+      get  "/state"       => "discourse_manager/game#state"
+      get  "/leaderboard" => "discourse_manager/game#leaderboard"
+      get  "/my-stats"    => "discourse_manager/game#my_stats"
     end
   end
 end

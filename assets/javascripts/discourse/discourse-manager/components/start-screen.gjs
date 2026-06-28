@@ -52,6 +52,12 @@ export default class StartScreen extends Component {
             Generating your community...
           </div>
         {{else}}
+          {{#if this.gameState.myStats.games_played}}
+            <p class="dm-start__personal-best">
+              Personal best: <strong>{{this.gameState.myStats.high_score}}</strong> &middot; {{this.gameState.myStats.games_played}} games played
+            </p>
+          {{/if}}
+
           <button class="btn btn-primary dm-start__btn" {{on "click" this.start}}>
             Start Day 1
           </button>

@@ -19,6 +19,22 @@ module DiscourseManager
       render json: { session_id: session.id, status: "generating" }
     end
 
+    def leaderboard
+      rows = DiscourseManager::UserStat.leaderboard
+      render json: rows.map { |s|
+        { username: s.username, high_score: s.high_score, best_day: s.best_day, games_played: s.games_played }
+      }
+    end
+
+    def my_stats
+      stat = DiscourseManager::UserStat.find_by(user_id: current_user.id)
+      if stat
+        render json: { high_score: stat.high_score, best_day: stat.best_day, games_played: stat.games_played }
+      else
+        render json: { high_score: 0, best_day: 0, games_played: 0 }
+      end
+    end
+
     def next_day
       session = GameSession.find_by(user_id: current_user.id, status: "day_end")
       return render json: { error: "No day_end session" }, status: 404 unless session

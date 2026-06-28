@@ -83,6 +83,7 @@ module DiscourseManager
       summary = build_day_summary
       if day >= MAX_DAYS
         update!(status: "won")
+        DiscourseManager::UserStat.record_game_end(user: user, score: score, day: day)
         publish_state!
       else
         update!(status: "day_end", day_summary: summary)
@@ -176,6 +177,7 @@ module DiscourseManager
     def check_lose_conditions
       if health <= 0 || retention <= 0
         update!(status: "lost")
+        DiscourseManager::UserStat.record_game_end(user: user, score: score, day: day)
         publish_state!
       end
     end
