@@ -27,6 +27,11 @@ module DiscourseManager
       plugin_broken
       great_newcomer
       external_link_spike
+      bad_update
+      server_outage
+      db_migration_fail
+      cdn_failure
+      accidental_data_wipe
     ].freeze
 
     def self.for_user(user)
@@ -251,6 +256,21 @@ module DiscourseManager
 
     def apply_event_on_fire(event_type, payload)
       case event_type
+      when "bad_update"
+        self.response_time = [response_time - 30, 0].max
+        self.health        = [health - 10, 0].max
+      when "server_outage"
+        self.response_time = [response_time - 50, 0].max
+        self.health        = [health - 20, 0].max
+      when "db_migration_fail"
+        self.response_time = [response_time - 20, 0].max
+        self.spam_rate     = [spam_rate + 15, 100].min
+      when "cdn_failure"
+        self.retention     = [retention - 20, 0].max
+        self.health        = [health - 10, 0].max
+      when "accidental_data_wipe"
+        self.health        = [health - 35, 0].max
+        self.retention     = [retention - 25, 0].max
       when "spam_wave"
         spawn_new_flags(count: payload[:count] || 10)
       when "viral_topic"
@@ -290,6 +310,68 @@ module DiscourseManager
         self.spam_rate = resolution == "ban_all" ? [spam_rate - 20, 0].max : [spam_rate + 10, 100].min
       when "staff_conflict"
         self.retention = resolution == "mediate" ? [retention + 5, 100].min : [retention - 10, 0].max
+      when "bad_update"
+        case resolution
+        when "rollback_update"
+          self.response_time = [response_time + 25, 100].min
+          self.health        = [health + 5, 100].min
+        when "hotfix_live"
+          # risky - 50/50 chance it works
+          if rand < 0.5
+            self.response_time = [response_time + 35, 100].min
+          else
+            self.response_time = [response_time - 10, 0].max
+            self.health        = [health - 10, 0].max
+          end
+        when "post_status_update"
+          self.health    = [health + 5, 100].min
+          self.retention = [retention + 5, 100].min
+        end
+      when "server_outage"
+        case resolution
+        when "escalate_immediately"
+          self.response_time = [response_time + 40, 100].min
+          self.health        = [health + 10, 100].min
+        when "post_maintenance_notice"
+          self.health    = [health + 5, 100].min
+          self.retention = [retention + 5, 100].min
+        when "wait_and_see"
+          self.retention = [retention - 15, 0].max
+        end
+      when "db_migration_fail"
+        case resolution
+        when "restore_backup"
+          self.response_time = [response_time + 20, 100].min
+          self.spam_rate     = [spam_rate - 10, 0].max
+        when "disable_writes"
+          self.response_time = [response_time + 10, 100].min
+          self.retention     = [retention - 10, 0].max
+        when "communicate_openly"
+          self.health    = [health + 5, 100].min
+          self.retention = [retention + 5, 100].min
+        end
+      when "cdn_failure"
+        case resolution
+        when "purge_cdn_cache"
+          self.retention = [retention + 15, 100].min
+          self.health    = [health + 5, 100].min
+        when "switch_cdn_provider"
+          self.retention = [retention + 10, 100].min
+        when "post_workaround"
+          self.retention = [retention + 5, 100].min
+        end
+      when "accidental_data_wipe"
+        case resolution
+        when "restore_from_backup"
+          self.health    = [health + 20, 100].min
+          self.retention = [retention + 15, 100].min
+        when "notify_users"
+          self.health    = [health + 5, 100].min
+          self.retention = [retention - 5, 0].max
+        when "cover_it_up"
+          self.retention = [retention - 30, 0].max
+          self.health    = [health - 10, 0].max
+        end
       end
     end
   end

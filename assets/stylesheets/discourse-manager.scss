@@ -183,6 +183,14 @@
   margin-bottom: 0.5em;
 }
 
+.dm-event-card--technical {
+  border-color: var(--danger);
+  background: var(--danger-low);
+}
+
+.dm-event-card__type--technical { color: var(--danger); }
+.dm-event-card__type--community { color: var(--highlight-high); }
+
 .dm-event-card__actions {
   display: flex;
   gap: 0.5em;
