@@ -19,20 +19,9 @@ module DiscourseManager
     CATEGORIES = %w[general meta support announcements].freeze
     FLAG_TYPES = %w[spam inappropriate off_topic something_else].freeze
 
-    EVENT_TYPES = %w[
-      viral_topic
-      sockpuppet_wave
-      staff_conflict
-      spam_wave
-      plugin_broken
-      great_newcomer
-      external_link_spike
-      bad_update
-      server_outage
-      db_migration_fail
-      cdn_failure
-      accidental_data_wipe
-    ].freeze
+    def self.event_types
+      EventRegistry.all_types
+    end
 
     def self.for_user(user)
       active.find_by(user_id: user.id)
@@ -120,8 +109,6 @@ module DiscourseManager
       MessageBus.publish("/discourse-manager/session/#{id}", as_json_state)
     end
 
-    private
-
     def spawn_new_flags(count:)
       bad_actors = fake_users.where(profile: %w[spammer troll], banned: false, suspended: false).to_a
       return if bad_actors.empty?
@@ -140,6 +127,8 @@ module DiscourseManager
         )
       end
     end
+
+    private
 
     def build_day_summary
       resolved_today = fake_posts.where(flag_resolved: true).count
@@ -191,16 +180,15 @@ module DiscourseManager
       return if pending_events.count >= 2
       return unless rand < event_probability
 
-      event_type = EVENT_TYPES.sample
-      payload = build_event_payload(event_type)
+      event_type = self.class.event_types.sample
 
-      apply_event_on_fire(event_type, payload)
+      apply_event_on_fire(event_type)
 
       game_events.create!(
         event_type: event_type,
         fired: true,
         fire_at: Time.current,
-        payload: payload,
+        payload: {},
       )
       publish_state!
     end
@@ -209,20 +197,6 @@ module DiscourseManager
       base = 0.05
       day_scaling = day * 0.01
       [base + day_scaling, 0.4].min
-    end
-
-    def build_event_payload(event_type)
-      case event_type
-      when "viral_topic"
-        post = fake_posts.order("RANDOM()").first
-        { post_id: post&.id, flag_count: rand(15..40) }
-      when "sockpuppet_wave"
-        { count: rand(5..12) }
-      when "spam_wave"
-        { count: rand(10..20) }
-      else
-        {}
-      end
     end
 
     def resolve_flag(post_id, resolution)
@@ -254,125 +228,12 @@ module DiscourseManager
       apply_event_resolution(event, resolution)
     end
 
-    def apply_event_on_fire(event_type, payload)
-      case event_type
-      when "bad_update"
-        self.response_time = [response_time - 30, 0].max
-        self.health        = [health - 10, 0].max
-      when "server_outage"
-        self.response_time = [response_time - 50, 0].max
-        self.health        = [health - 20, 0].max
-      when "db_migration_fail"
-        self.response_time = [response_time - 20, 0].max
-        self.spam_rate     = [spam_rate + 15, 100].min
-      when "cdn_failure"
-        self.retention     = [retention - 20, 0].max
-        self.health        = [health - 10, 0].max
-      when "accidental_data_wipe"
-        self.health        = [health - 35, 0].max
-        self.retention     = [retention - 25, 0].max
-      when "spam_wave"
-        spawn_new_flags(count: payload[:count] || 10)
-      when "viral_topic"
-        spawn_new_flags(count: payload[:flag_count] || 15)
-      when "sockpuppet_wave"
-        # spawn new spammer users then immediately have them post
-        (payload[:count] || 5).times do
-          user = fake_users.create!(
-            username: DiscourseManager::FakeUser.generate_username,
-            display_name: DiscourseManager::FakeUser.generate_display_name,
-            avatar_color: DiscourseManager::FakeUser::AVATAR_COLORS.sample,
-            trust_level: 0,
-            profile: "spammer",
-            warnings: 0,
-            suspended: false,
-            banned: false,
-          )
-          fake_posts.create!(
-            fake_user: user,
-            body: DiscourseManager::FakePost.post_body_for(user),
-            category: CATEGORIES.sample,
-            is_topic_op: false,
-            flagged: true,
-            flag_type: "spam",
-            flag_resolved: false,
-            removed: false,
-          )
-        end
-      end
+    def apply_event_on_fire(event_type)
+      EventRegistry.for(event_type)&.dig(:on_fire)&.call(self)
     end
 
     def apply_event_resolution(event, resolution)
-      case event.event_type
-      when "viral_topic"
-        self.health = resolution == "close_topic" ? [health + 10, 100].min : [health - 5, 0].max
-      when "sockpuppet_wave"
-        self.spam_rate = resolution == "ban_all" ? [spam_rate - 20, 0].max : [spam_rate + 10, 100].min
-      when "staff_conflict"
-        self.retention = resolution == "mediate" ? [retention + 5, 100].min : [retention - 10, 0].max
-      when "bad_update"
-        case resolution
-        when "rollback_update"
-          self.response_time = [response_time + 25, 100].min
-          self.health        = [health + 5, 100].min
-        when "hotfix_live"
-          # risky - 50/50 chance it works
-          if rand < 0.5
-            self.response_time = [response_time + 35, 100].min
-          else
-            self.response_time = [response_time - 10, 0].max
-            self.health        = [health - 10, 0].max
-          end
-        when "post_status_update"
-          self.health    = [health + 5, 100].min
-          self.retention = [retention + 5, 100].min
-        end
-      when "server_outage"
-        case resolution
-        when "escalate_immediately"
-          self.response_time = [response_time + 40, 100].min
-          self.health        = [health + 10, 100].min
-        when "post_maintenance_notice"
-          self.health    = [health + 5, 100].min
-          self.retention = [retention + 5, 100].min
-        when "wait_and_see"
-          self.retention = [retention - 15, 0].max
-        end
-      when "db_migration_fail"
-        case resolution
-        when "restore_backup"
-          self.response_time = [response_time + 20, 100].min
-          self.spam_rate     = [spam_rate - 10, 0].max
-        when "disable_writes"
-          self.response_time = [response_time + 10, 100].min
-          self.retention     = [retention - 10, 0].max
-        when "communicate_openly"
-          self.health    = [health + 5, 100].min
-          self.retention = [retention + 5, 100].min
-        end
-      when "cdn_failure"
-        case resolution
-        when "purge_cdn_cache"
-          self.retention = [retention + 15, 100].min
-          self.health    = [health + 5, 100].min
-        when "switch_cdn_provider"
-          self.retention = [retention + 10, 100].min
-        when "post_workaround"
-          self.retention = [retention + 5, 100].min
-        end
-      when "accidental_data_wipe"
-        case resolution
-        when "restore_from_backup"
-          self.health    = [health + 20, 100].min
-          self.retention = [retention + 15, 100].min
-        when "notify_users"
-          self.health    = [health + 5, 100].min
-          self.retention = [retention - 5, 0].max
-        when "cover_it_up"
-          self.retention = [retention - 30, 0].max
-          self.health    = [health - 10, 0].max
-        end
-      end
+      EventRegistry.for(event.event_type)&.dig(:resolutions, resolution)&.call(self)
     end
   end
 end

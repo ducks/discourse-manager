@@ -20,6 +20,7 @@ after_initialize do
   end
 
   require_relative "app/controllers/discourse_manager/game_controller"
+  require_relative "app/models/discourse_manager/event_registry"
   require_relative "app/models/discourse_manager/game_session"
   require_relative "app/models/discourse_manager/fake_user"
   require_relative "app/models/discourse_manager/fake_post"
